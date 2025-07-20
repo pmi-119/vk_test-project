@@ -19,7 +19,7 @@
 1. Клонируйте репозиторий:
 
 ```bash
-git clone https://github.com/pmi-119/vk_test_proejct.git
+git clone https://github.com/pmi-119/vk_test_project.git
 ```
 
 Убедитесь что у вас установлен docker и docker-compose
