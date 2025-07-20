@@ -1,0 +1,28 @@
+openapi: 3.0.0
+info:
+  title: backend service
+  description: Сервис для управления ПВЗ и приемкой товаров
+  version: 1.0.0
+
+paths:
+  /login:
+    post:
+      summary: Авторизация пользователя
+      requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+            required: [email, password]
+  /register:
+    post:
+  /add-product:
+    post:
+  /get-feed:
+    post:

@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  vk_db: 
+    container_name: vk_db
+    image: postgres:15
+    environment: 
+      POSTGRES_USER: master
+      POSTGRES_PASSWORD: master
+      POSTGRES_DB: master
+    ports:
+      - "3116:5432"
