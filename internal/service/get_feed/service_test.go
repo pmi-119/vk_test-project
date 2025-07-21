@@ -8,47 +8,69 @@ import (
 	"VK_test_proect/internal/repository/product_info"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestService_GetFeed(t *testing.T) {
+func TestService_GetFeed_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockRepo := NewMockproductRepo(ctrl)
-
-	// Подготовка входных и ожидаемых данных
-	ctx := context.Background()
-	expectedProducts := []model.ProductInfo{
-		{
-			Title:         "Test Product 1",
-			Description:   "Description 1",
-			ImageUrl:      "http://image1.com",
-			Price:         100.0,
-			UserLogin:     "user1",
-			IsCurrentUser: true,
-		},
-		{
-			Title:         "Test Product 2",
-			Description:   "Description 2",
-			ImageUrl:      "http://image2.com",
-			Price:         200.0,
-			UserLogin:     "user2",
-			IsCurrentUser: false,
-		},
-	}
-	// Настройка ожиданий
-	mockRepo.
-		EXPECT().
-		Select(ctx, nil, product_info.Sorting{}, product_info.Paging{}).
-		Return(expectedProducts, nil)
-
 	service := New(mockRepo)
 
-	// Вызов
-	out, err := service.GetFeed(ctx, In{})
+	// входные данные
+	userID := uuid.New()
+	minPrice := int(100)
+	maxPrice := int(500)
+	in := In{
+		UserID: &userID,
+		PriceFilter: &PriceFilter{
+			Min: &minPrice,
+			Max: &maxPrice,
+		},
+		Sorting: &Sorting{
+			Column: "price",
+			Order:  "DESC",
+		},
+		Paging: &Paging{
+			Limit: 10,
+			Page:  1,
+		},
+	}
 
-	// Проверки
+	expectedFilter := &product_info.PriceFilter{
+		Min: &minPrice,
+		Max: &maxPrice,
+	}
+	expectedSorting := product_info.Sorting{
+		Column: "price",
+		Order:  "DESC",
+	}
+	expectedPaging := product_info.Paging{
+		Limit:  10,
+		Offset: 10, // Page * Limit = 1 * 10
+	}
+
+	mockData := []model.ProductWithUser{
+		{
+			Title:       "Test Product",
+			Description: "Test Desc",
+			ImageUrl:    "http://image.com",
+			Price:       123.45,
+			UserLogin:   "test_user",
+			UserID:      userID,
+		},
+	}
+
+	mockRepo.EXPECT().
+		Select(gomock.Any(), expectedFilter, expectedSorting, expectedPaging).
+		Return(mockData, nil)
+
+	out, err := service.GetFeed(context.Background(), in)
+
 	assert.NoError(t, err)
-	assert.Equal(t, expectedProducts, out.Items)
+	assert.Len(t, out.Items, 1)
+	assert.Equal(t, "Test Product", out.Items[0].Title)
+	assert.True(t, out.Items[0].IsCurrentUser)
 }

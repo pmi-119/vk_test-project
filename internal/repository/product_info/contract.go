@@ -6,8 +6,8 @@ type PriceFilter struct {
 }
 
 type Sorting struct {
-	SortingByColumn string // "created_at"
-	SortingOrder    string // ASC, DESC
+	Column string // "created_at"
+	Order  string // ASC, DESC
 }
 
 type Paging struct {

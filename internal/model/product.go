@@ -25,3 +25,12 @@ type ProductInfo struct {
 	UserLogin     string
 	IsCurrentUser bool
 }
+
+type ProductWithUser struct {
+	Title       string
+	Description string
+	ImageUrl    string
+	Price       float64
+	UserLogin   string
+	UserID      uuid.UUID
+}

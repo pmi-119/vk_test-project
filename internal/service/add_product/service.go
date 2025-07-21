@@ -50,7 +50,7 @@ func (s *Service) AddingProduct(ctx context.Context, in In) (Out, error) {
 
 	product := model.Product{
 		Id:          uuid.New(),
-		UserID:      uuid.New(),
+		UserID:      in.UserID,
 		Title:       in.Title,
 		Description: in.Description,
 		ImageUrl:    in.ImageURL,

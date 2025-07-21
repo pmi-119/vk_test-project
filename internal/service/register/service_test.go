@@ -3,98 +3,107 @@ package register
 import (
 	"context"
 	"errors"
+	"regexp"
 	"testing"
 
 	"VK_test_proect/internal/model"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRegisterUser_Success(t *testing.T) {
+func TestService_RegisterUser_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockRepo := NewMockuserRepo(ctrl)
+	service := New(mockRepo)
 
-	svc := New(mockRepo)
-
-	ctx := context.Background()
-	email := "test@example.com"
-	password := "password123"
-
-	in := In{
-		Email:    email,
-		Password: password,
+	input := In{
+		Login:    "testuser",
+		Email:    "user@example.com",
+		Password: "Pass1234",
 	}
 
-	// ожидаем, что Save будет вызван с правильными аргументами
-	mockRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).DoAndReturn(
-		func(ctx context.Context, user model.User, pass string) error {
-			assert.Equal(t, email, user.Email)
-			return nil
-		},
-	)
+	// Здесь важно использовать gomock.Matching по полям, которые известны
+	mockRepo.EXPECT().
+		Save(gomock.Any(), gomock.AssignableToTypeOf(model.User{})).
+		Return(nil)
 
-	out, err := svc.RegisterUser(ctx, in)
+	user, err := service.RegisterUser(context.Background(), input)
 
 	assert.NoError(t, err)
-	assert.Equal(t, email, out.Email)
+	assert.Equal(t, input.Login, user.Login)
+	assert.Equal(t, input.Email, user.Email)
+	assert.Equal(t, input.Password, user.Password)
+	assert.True(t, isUUIDv4(user.Id.String()))
 }
 
-func TestRegisterUser_InvalidEmail(t *testing.T) {
+func TestService_RegisterUser_InvalidEmail(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockRepo := NewMockuserRepo(ctrl)
+	service := New(mockRepo)
 
-	svc := New(mockRepo)
-
-	in := In{
+	input := In{
+		Login:    "testuser",
 		Email:    "invalid-email",
-		Password: "password123",
+		Password: "Pass1234",
 	}
 
-	_, err := svc.RegisterUser(context.Background(), in)
-	assert.Equal(t, ErrInvalidEmail, err)
+	user, err := service.RegisterUser(context.Background(), input)
+
+	assert.ErrorIs(t, err, ErrInvalidEmail)
+	assert.Equal(t, uuid.Nil, user.Id)
 }
 
-func TestRegisterUser_WeakPassword(t *testing.T) {
+func TestService_RegisterUser_WeakPassword(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockRepo := NewMockuserRepo(ctrl)
+	service := New(mockRepo)
 
-	svc := New(mockRepo)
-
-	in := In{
-		Email:    "test@example.com",
-		Password: "123", // слабый пароль
+	input := In{
+		Login:    "testuser",
+		Email:    "user@example.com",
+		Password: "weak", // no digits or too short
 	}
 
-	_, err := svc.RegisterUser(context.Background(), in)
-	assert.Equal(t, ErrWeakPassword, err)
+	user, err := service.RegisterUser(context.Background(), input)
+
+	assert.ErrorIs(t, err, ErrWeakPassword)
+	assert.Equal(t, uuid.Nil, user.Id)
 }
 
-func TestRegisterUser_RepoFails(t *testing.T) {
+func TestService_RegisterUser_SaveFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockRepo := NewMockuserRepo(ctrl)
+	service := New(mockRepo)
 
-	svc := New(mockRepo)
-
-	in := In{
-		Email:    "test@example.com",
-		Password: "password123",
+	input := In{
+		Login:    "testuser",
+		Email:    "user@example.com",
+		Password: "Pass1234",
 	}
-
-	expectedErr := errors.New("db error")
 
 	mockRepo.EXPECT().
-		Save(gomock.Any(), gomock.Any()).
-		Return(expectedErr)
+		Save(gomock.Any(), gomock.AssignableToTypeOf(model.User{})).
+		Return(errors.New("db error"))
 
-	_, err := svc.RegisterUser(context.Background(), in)
-	assert.Equal(t, expectedErr, err)
+	user, err := service.RegisterUser(context.Background(), input)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "db error")
+	assert.Equal(t, uuid.Nil, user.Id)
+}
+
+// Вспомогательная проверка UUID
+func isUUIDv4(id string) bool {
+	r := regexp.MustCompile(`^[a-f\d]{8}-([a-f\d]{4}-){3}[a-f\d]{12}$`)
+	return r.MatchString(id)
 }

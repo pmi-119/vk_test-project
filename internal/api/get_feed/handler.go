@@ -11,12 +11,14 @@ import (
 )
 
 type Handler struct {
-	service service
+	service      service
+	tokenService tokenService
 }
 
-func New(service service) *Handler {
+func New(service service, tokenService tokenService) *Handler {
 	return &Handler{
-		service: service,
+		service:      service,
+		tokenService: tokenService,
 	}
 }
 
@@ -29,19 +31,39 @@ func (h *Handler) PostFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	in := contract.In{
-		PriceFilter: &contract.PriceFilter{
-			Min: data.PriceFilter.Min,
-			Max: data.PriceFilter.Max,
-		},
-		Sorting: &contract.Sorting{
-			SortingByColumn: data.Sorting.SortingByColumn,
-			SortingOrder:    data.Sorting.SortingOrder,
-		},
-		Paging: &contract.Paging{
+	in := contract.In{}
+
+	if data.Paging != nil {
+		in.Paging = &contract.Paging{
 			Page:  data.Paging.Page,
 			Limit: data.Paging.Limit,
-		},
+		}
+	}
+
+	if data.Sorting != nil {
+		in.Sorting = &contract.Sorting{
+			Column: data.Sorting.Column,
+			Order:  data.Sorting.Order,
+		}
+	}
+
+	if data.PriceFilter != nil {
+		in.PriceFilter = &contract.PriceFilter{
+			Max: data.PriceFilter.Max,
+			Min: data.PriceFilter.Min,
+		}
+	}
+
+	tokenString, ok := dto.GetTokenFromHeader(*r)
+	if ok {
+		userID, err := h.tokenService.Validate(tokenString)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+
+			return
+		}
+
+		in.UserID = &userID
 	}
 
 	out, err := h.service.GetFeed(r.Context(), in)
@@ -56,13 +78,14 @@ func (h *Handler) PostFeed(w http.ResponseWriter, r *http.Request) {
 
 	for _, item := range out.Items {
 		res = append(res, dto.ProductDTOInfo{
-			Title:       item.Title,
-			Description: item.Description,
-			ImageUrl:    item.ImageUrl,
-			Price:       item.Price,
-			UserLogin:   item.UserLogin,
+			Title:         item.Title,
+			Description:   item.Description,
+			ImageUrl:      item.ImageUrl,
+			Price:         item.Price,
+			UserLogin:     item.UserLogin,
+			IsCurrentUser: item.IsCurrentUser,
 		})
 	}
 
-	responses.OK(w, res, http.StatusCreated)
+	responses.OK(w, res, http.StatusOK)
 }

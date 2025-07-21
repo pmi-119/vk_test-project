@@ -36,6 +36,7 @@ func (h *Handler) PostFeed(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
 	var data api.ProductDTOIn
 
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {

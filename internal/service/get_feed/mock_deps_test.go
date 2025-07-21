@@ -37,10 +37,10 @@ func (m *MockproductRepo) EXPECT() *MockproductRepoMockRecorder {
 }
 
 // Select mocks base method.
-func (m *MockproductRepo) Select(ctx context.Context, priceFilter *product_info.PriceFilter, sort product_info.Sorting, paging product_info.Paging) ([]model.ProductInfo, error) {
+func (m *MockproductRepo) Select(ctx context.Context, priceFilter *product_info.PriceFilter, sort product_info.Sorting, paging product_info.Paging) ([]model.ProductWithUser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Select", ctx, priceFilter, sort, paging)
-	ret0, _ := ret[0].([]model.ProductInfo)
+	ret0, _ := ret[0].([]model.ProductWithUser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

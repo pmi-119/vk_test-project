@@ -9,6 +9,7 @@ import (
 	"VK_test_proect/internal/model"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -35,22 +36,29 @@ func toRow(product model.Product) productRow {
 	}
 }
 
-type productInfoRow struct {
+type productWithUserRow struct {
 	Title       string  `db:"title"`
 	Description string  `db:"description"`
 	ImageUrl    string  `db:"image_url"`
 	Price       float64 `db:"price"`
-	Email       string  `db:"email"`
+	Login       string  `db:"login"`
+	UserID      string  `db:"user_id"`
 }
 
-func toProductInfoModel(row productInfoRow) model.ProductInfo {
-	return model.ProductInfo{
+func toProductInfoWithUserToModel(row productWithUserRow) (model.ProductWithUser, error) {
+	userID, err := uuid.Parse(row.UserID)
+	if err != nil {
+		return model.ProductWithUser{}, err
+	}
+
+	return model.ProductWithUser{
 		Title:       row.Title,
 		Description: row.Description,
 		ImageUrl:    row.ImageUrl,
 		Price:       row.Price,
-		UserLogin:   row.Email,
-	}
+		UserLogin:   row.Login,
+		UserID:      userID,
+	}, nil
 }
 
 type Repository struct {
@@ -63,22 +71,8 @@ func New(db *sqlx.DB) *Repository {
 	}
 }
 
-func (r *Repository) Select(ctx context.Context, priceFilter *PriceFilter, sort Sorting, paging Paging) ([]model.ProductInfo, error) {
-	// // Установите значения по умолчанию, если они пустые
-	// if sort.SortingByColumn == "" {
-	// 	sort.SortingByColumn = "created_at" // или "price", "title"
-	// }
-	// if sort.SortingOrder == "" {
-	// 	sort.SortingOrder = "DESC" // или "ASC"
-	// }
-	// if paging.Limit <= 0 {
-	// 	paging.Limit = 10
-	// }
-	// if paging.Offset < 0 {
-	// 	paging.Offset = 0
-	// }
-
-	query := sq.Select("title, description, image_url, price, email").
+func (r *Repository) Select(ctx context.Context, priceFilter *PriceFilter, sort Sorting, paging Paging) ([]model.ProductWithUser, error) {
+	query := sq.Select("title, description, image_url, price, login, user_id").
 		From("products").
 		Join("users ON users.id = products.user_id")
 
@@ -92,28 +86,30 @@ func (r *Repository) Select(ctx context.Context, priceFilter *PriceFilter, sort 
 		}
 	}
 
-	query = query.OrderBy(sort.SortingByColumn + " " + sort.SortingOrder)
+	query = query.OrderBy(sort.Column + " " + sort.Order)
 	query = query.Offset(uint64(paging.Offset))
 	query = query.Limit(uint64(paging.Limit))
 
 	sqlString, args, err := query.ToSql()
 	if err != nil {
-		fmt.Printf("SQL query: %s\nArgs: %v\n", sqlString, args)
 		return nil, fmt.Errorf("error in building sql query: %w", err)
 	}
 
-	var rows []productInfoRow
+	var rows []productWithUserRow
 
-	err = r.db.SelectContext(ctx, &rows, sqlString, args...)
+	err = r.db.SelectContext(ctx, &rows, r.db.Rebind(sqlString), args...)
 	if err != nil {
-		fmt.Printf("SQL query: %s\nArgs: %v\n", sqlString, args)
-		fmt.Printf("Selected rows: %+v\n", rows)
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
 
-	res := make([]model.ProductInfo, 0, len(rows))
+	res := make([]model.ProductWithUser, 0, len(rows))
 	for _, row := range rows {
-		res = append(res, toProductInfoModel(row))
+		convertedRow, err := toProductInfoWithUserToModel(row)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, convertedRow)
 	}
 
 	return res, nil
@@ -121,6 +117,7 @@ func (r *Repository) Select(ctx context.Context, priceFilter *PriceFilter, sort 
 
 func (r *Repository) Save(ctx context.Context, product model.Product) error {
 	row := toRow(product)
+
 	query := `
 		INSERT INTO products (
 			id,
@@ -139,6 +136,7 @@ func (r *Repository) Save(ctx context.Context, product model.Product) error {
 			:price,
 			:created_at
 		)`
+
 	_, err := r.db.NamedExecContext(ctx, query, row)
 	if err != nil {
 		log.Printf("Error saving product: %v", err)

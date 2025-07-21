@@ -11,6 +11,7 @@ import (
 type service interface {
 	AddingProduct(ctx context.Context, in contract.In) (contract.Out, error)
 }
+
 type tokenService interface {
 	Validate(token string) (uuid.UUID, error)
 }

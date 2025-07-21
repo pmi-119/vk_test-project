@@ -46,14 +46,14 @@ func main() {
 	tokenService := tokenservice.New("secret")
 	addProductService := add_product.New(productRepo, userRepo)
 	authorizeService := authorize.New(tokenService, userRepo)
-	getfeedService := get_feed.New(productRepo)
+	getFeedService := get_feed.New(productRepo)
 	registerService := register.New(userRepo)
 
 	// Handlers
 
 	addProductHandler := add_product_handler.New(addProductService, tokenService)
 	authorizeHandler := authorize_handler.New(authorizeService)
-	getfeedHandler := get_feed_handler.New(getfeedService)
+	getfeedHandler := get_feed_handler.New(getFeedService, tokenService)
 	registerHandler := register_handler.New(registerService)
 
 	router := chi.NewRouter()

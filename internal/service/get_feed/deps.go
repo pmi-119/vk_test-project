@@ -9,5 +9,5 @@ import (
 )
 
 type productRepo interface {
-	Select(ctx context.Context, priceFilter *repo.PriceFilter, sort repo.Sorting, paging repo.Paging) ([]model.ProductInfo, error)
+	Select(ctx context.Context, priceFilter *repo.PriceFilter, sort repo.Sorting, paging repo.Paging) ([]model.ProductWithUser, error)
 }

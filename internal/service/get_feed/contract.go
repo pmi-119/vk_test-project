@@ -22,8 +22,8 @@ type PriceFilter struct {
 	Max *int
 }
 type Sorting struct {
-	SortingByColumn string
-	SortingOrder    string
+	Column string
+	Order  string
 }
 type Paging struct {
 	Page  int

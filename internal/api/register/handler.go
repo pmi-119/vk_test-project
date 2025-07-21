@@ -2,7 +2,6 @@ package register
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	dto "VK_test_proect/internal/api"
@@ -38,7 +37,6 @@ func (h *Handler) PostRegister(w http.ResponseWriter, r *http.Request) {
 	user, err := h.service.RegisterUser(r.Context(), in)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Println("RegisterUser error:", err)
 
 		return
 	}
